@@ -61,5 +61,3 @@ Although the context is telecom, the approach is directly applicable to player c
   - logistic regression models  
   - VIF diagnostics and reduced model  
   - predicted probabilities and ranked churn lists
-- Additional figures/tables (if included) – VIF plot, regression summary table, churn risk tables.
-
