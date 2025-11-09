@@ -1,0 +1,294 @@
+---
+title: "Assignment 2 - Strategic Marketing Decision Making
+2025-2026"
+author: "Gonçalo Passinhas (732518)"
+date: "2025-09-30"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+## Install the packages
+library(gt)
+library(ggplot2)
+library(tidyverse)
+library(knitr)
+library(performance)
+library(dplyr)
+library(broom)
+library(kableExtra)
+
+Telco_Data<- read_csv("C:/Users/gonfp/Documents/University/Master's/Strategic Marketing Decision Making/Telco.csv")
+str(Telco_Data)
+
+options(scipen = 999)
+
+## Instead of characters, convert to factors
+Telco_Data[sapply(Telco_Data, is.character)] <- lapply(Telco_Data[sapply(Telco_Data, is.character)], as.factor)
+str(Telco_Data)
+```
+
+
+```{r Q1, include = FALSE, echo = FALSE}
+## Let's check collinearity
+
+LR.Telco = glm(Churn ~  MonthlyCharges + TotalCharges + gender + SeniorCitizen + Partner + 
+Dependents + tenure + PhoneService + StreamingMovies + Contract + PaperlessBilling + PaymentMethod,
+                   data = Telco_Data, family = "binomial")
+summary(LR.Telco)
+
+collinearity_results <- check_collinearity(LR.Telco)
+collinearity_results
+```
+
+As can be seen in the plot below, the variance inflation factor (VIF) results show that most variables have a Low Correlation with a value of below 5. As can be seen, "gender" has a VIF of `r round(collinearity_results$VIF[collinearity_results$Term == "gender"], 2)` , SeniorCitizen `r round(collinearity_results$VIF[collinearity_results$Term == "SeniorCitizen"], 2)` , Partner `r round(collinearity_results$VIF[collinearity_results$Term == "Partner"], 2)`, 
+Dependents `r round(collinearity_results$VIF[collinearity_results$Term == "Dependents"], 2)`, PhoneService `r round(collinearity_results$VIF[collinearity_results$Term == "PhoneService"], 2)`, StreamingMovies `r round(collinearity_results$VIF[collinearity_results$Term == "StreamingMovies"], 2)`, Contract `r round(collinearity_results$VIF[collinearity_results$Term == "Contract"], 2)`, PaperlessBilling `r round(collinearity_results$VIF[collinearity_results$Term == "PaperlessBilling"], 2)`, and PaymentMethod `r round(collinearity_results$VIF[collinearity_results$Term == "PaymentMethod"], 2)`.
+These values all fall below 5, indicating low levels of multicollinearity. `r round(collinearity_results$VIF[collinearity_results$Term == "MonthlyCharges"], 2)` has a VIF of 7.18, 
+which points to a moderate level of correlation with other predictors.
+\begin{figure}[ht]
+\begin{minipage}{0.55\linewidth}
+```{r plot_in_PDF, echo=FALSE, out.width="100%"}
+
+plot(collinearity_results) +
+  ggtitle("Variance Inflation Factors for Telco Churn Model") +
+  theme(
+    axis.text.x = element_text(angle = 60, hjust = 1, size = 9),
+    plot.title = element_text(hjust = 0, size = 13, face = "bold")
+  )
+```
+\end{minipage}
+\hfill
+\begin{minipage}{0.4\linewidth}
+In contrast, both TotalCharges and tenure stand out with very high VIFs of `r round(collinearity_results$VIF[collinearity_results$Term == "TotalCharges"], 2)` and `r round(collinearity_results$VIF[collinearity_results$Term == "tenure"], 2)`, respectively. These elevated values signal severe multicollinearity, suggesting that these variables overlap strongly with other predictors in the model. 
+As a result, there is a risk of inflated standard errors and unstable coefficient estimates. To address this issue, 
+it may be necessary to consider removing or combining these variables, or to apply regularization techniques such as ridge or lasso regression to mitigate the effects of multicollinearity.
+\end{minipage}
+\end{figure}
+
+```{r Q2, include = FALSE}
+LR.Telco1 <- glm(
+  Churn ~ MonthlyCharges + gender + SeniorCitizen +
+          Partner + Dependents + tenure + PhoneService +
+          StreamingMovies + Contract + PaperlessBilling + PaymentMethod,
+  data = Telco_Data,
+  family = binomial
+)
+
+summary(LR.Telco1)
+```
+
+The results in Table \ref{tab:logit} indicate that tenure, contract type, and phone service all play an important role in explaining customer churn. The coefficient for tenure is negative and statistically significant ($\beta_{Tenure} = -0.038$, $p < 0.001$), which means that customers with a longer history at the company are less likely to leave. Expressed in odds ratios, each additional month of tenure decreases the odds of churn by about $4$% ($odds ratio = 0.96$). This finding suggests that customer loyalty grows over time: the longer a customer remains with the company, the more stable the relationship becomes, and the lower the likelihood of churn.
+
+Similarly, the coefficient for being on a one-year contract is also negative and highly significant ($\beta_{ContractOneYear} = -0.862$, $p < 0.001$). The odds ratio of approximately $0.42$ implies that customers with a one-year contract are about $58$% less likely to churn compared to the baseline group, which is most likely month-to-month contract holders. This demonstrates the strong stabilizing effect of longer contract commitments, as customers who agree to a fixed-term contract tend to be more engaged and less inclined to switch providers.
+
+Finally, the presence of phone service shows a significant negative effect on churn as well ($\beta_{PhoneServiceYes} = -0.845$, $p < 0.001$). The corresponding odds ratio of around $0.43$ indicates that customers with phone service are about $57$% less likely to churn than those without it. This points to the value of bundled or additional services in customer retention. By offering phone service, the company increases customer stickiness, making it less attractive for customers to leave for competitors.
+```{r reg results, echo = FALSE}
+tidy(LR.Telco1) |> 
+  kable(digits = 3, caption = "Logistic Regression Results \\label{tab:logit}")
+```
+Taken together, these results highlight that tenure, contractual arrangements, and service features are strong protective factors against churn. Customers who stay longer, commit to longer contracts, or subscribe to additional services are significantly more likely to remain loyal, underscoring the importance of customer relationship management strategies that foster retention through stability and service bundling.
+
+\textbf{Recommendation 1. Encourage longer-term contracts through targeted incentives.}
+The regression results show that customers on one-year contracts are significantly less likely to churn compared to those on month-to-month agreements. This suggests that contract length is a strong protective factor against customer attrition. Management should therefore promote longer-term commitments by offering targeted incentives, such as discounted monthly rates, additional service features, or loyalty bonuses for customers who switch to annual or multi-year contracts. By reducing the proportion of month-to-month customers, the company can increase customer stickiness and stabilize its subscriber base.
+
+\textbf{Recommendation 2. Promote bundled offerings that include phone service.}
+The analysis also indicates that customers with phone service are substantially less likely to churn than those without it. This highlights the value of bundling services to strengthen customer relationships. The firm should develop and market attractive bundle packages that include phone service alongside internet or TV products, potentially at a slight discount relative to purchasing services individually. Such cross-selling not only increases average revenue per user but also enhances customer retention, as customers who adopt additional services become more embedded in the company’s ecosystem and less likely to switch providers.
+```{r Q4, include = FALSE, echo = FALSE}
+#Fit the logistic regression model
+model <- glm(Churn ~ MonthlyCharges + gender + SeniorCitizen + Partner +
+             Dependents + tenure + PhoneService + StreamingMovies +
+             Contract + PaperlessBilling + PaymentMethod,
+             data = Telco_Data, family = "binomial")
+```
+
+```{r Predicted Probabilities, include = FALSE, echo = FALSE}
+#Predicted probabilities
+Telco_Data$Pred_Prob <- predict(model, type = "response")
+```
+
+```{r Relevant Columns, include = FALSE, echo = FALSE}
+#Select relevant columns
+Results <- Telco_Data[, c("customerID", "Pred_Prob", "Churn")]
+Results
+```
+```{r Top Probabilities, include = FALSE, echo = FALSE}
+#Top 10 Highest Probabilities
+top10_high <- Results %>%
+  arrange(desc(Pred_Prob)) %>%
+  head(10)
+#Top 10 Lowest Probabilities
+top10_low <- Results %>%
+  arrange(Pred_Prob) %>%
+  head(10)
+```
+
+\textbf{Predicted Churn Probability Tables.}
+Using the logistic regression model from before (excluding TotalCharges), we computed predicted churn probabilities for all customers in the data set. To illustrate the range of predicted outcomes, we report two lists:
+
+* Top 10 customers with the highest predicted churn probabilities which represent customers the model identifies as most at risk of leaving.
+
+* Top 10 customers with the lowest predicted churn probabilities – which represent customers the model identifies as least likely to churn.
+
+Each list includes the customer ID, the predicted churn probability, and the actual churn outcome, which allows us to assess the model’s alignment with reality.
+
+
+```{r Table High, message = FALSE, warning = FALSE, echo = FALSE}
+
+# Round all numeric columns to 3 decimals
+top10_high_round <- top10_high %>%
+  mutate(across(where(is.numeric), ~ round(.x, 5)))
+
+kable(top10_high_round, caption = "Top 10 Customers with Highest Predicted Churn Probabilities") %>%
+  kable_styling(latex_options = c("hold_position", "scale_down"),
+                font_size = 9)
+
+```
+
+As can be seen in Table 2, the high-risk group has predicted probabilities above 0.83, and most of these customers actually churned, which suggests the model is capturing meaningful churn risk. There are, however, a few cases where the model predicted a high probability of churn but the customer did not churn. These cases illustrate the probabilistic nature of logistic regression: the model can highlight elevated risk, but it cannot guarantee individual outcomes.
+
+```{r tab:Table-Low, message = FALSE, warning = FALSE, echo = FALSE}
+
+# Round all numeric columns to 5 decimals
+top10_low_round <- top10_low %>%
+  mutate(across(where(is.numeric), ~ round(.x, 5)))
+
+kable(top10_low_round, caption = "Top 10 Customers with Lowest Predicted Churn Probabilities") %>%
+  kable_styling(
+    latex_options = c("hold_position", "scale_down"),
+    font_size = 9)
+```
+
+
+In contrast, the low-risk group has probabilities around 0.002, and all of these customers indeed remained with the company, which is shown in Table 3. This indicates that the model is especially effective at identifying customers with very low churn likelihood.
+
+Taken together, these results show that while the model is not perfect, it is reasonably effective at separating customers into groups with very different churn risks. The top-10/high-risk list highlights where retention strategies may be most valuable, while the bottom-10/low-risk list confirms that the model reliably identifies stable customers.
+
+\pagebreak
+
+# Appendix: Full R Code for Reproducibility
+
+```{r appendix-code, echo=TRUE, eval=FALSE}
+# ==================================================
+# Telco Churn Analysis
+# ==================================================
+
+# -----------------------------------------------
+# Load Packages
+# -----------------------------------------------
+library(gt)
+library(ggplot2)
+library(tidyverse)
+library(knitr)
+library(performance)
+library(dplyr)
+library(broom)
+library(kableExtra)
+
+# -----------------------------------------------
+# Load Data
+# -----------------------------------------------
+Telco_Data <- read_csv("~/Downloads/Telco.csv")
+str(Telco_Data)
+
+# -----------------------------------------------
+# Options
+# -----------------------------------------------
+options(scipen = 999)
+
+# -----------------------------------------------
+# Convert character variables to factors
+# -----------------------------------------------
+Telco_Data[sapply(Telco_Data, is.character)] <- 
+  lapply(Telco_Data[sapply(Telco_Data, is.character)], as.factor)
+
+str(Telco_Data)
+
+# -----------------------------------------------
+# Logistic Regression Model 1 (with collinearity check)
+# -----------------------------------------------
+LR.Telco <- glm(
+  Churn ~ MonthlyCharges + TotalCharges + gender + SeniorCitizen + Partner + 
+    Dependents + tenure + PhoneService + StreamingMovies + Contract + 
+    PaperlessBilling + PaymentMethod,
+  data = Telco_Data,
+  family = "binomial"
+)
+
+summary(LR.Telco)
+
+# -----------------------------------------------
+# Check Collinearity
+# -----------------------------------------------
+collinearity_results <- check_collinearity(LR.Telco)
+collinearity_results
+
+plot(collinearity_results) +
+  ggtitle("Variance Inflation Factors for Telco Churn Model") +
+  theme(
+    axis.text.x = element_text(angle = 60, hjust = 1, size = 9),
+    plot.title = element_text(hjust = 0, size = 13, face = "bold")
+  )
+
+# -----------------------------------------------
+# Logistic Regression Model 2 (reduced)
+# -----------------------------------------------
+LR.Telco1 <- glm(
+  Churn ~ MonthlyCharges + gender + SeniorCitizen +
+    Partner + Dependents + tenure + PhoneService +
+    StreamingMovies + Contract + PaperlessBilling + PaymentMethod,
+  data = Telco_Data,
+  family = binomial
+)
+
+summary(LR.Telco1)
+
+tidy(LR.Telco1) |> 
+  kable(digits = 3, caption = "Logistic Regression Results \\label{tab:logit}")
+
+# -----------------------------------------------
+# Predicted Probabilities
+# -----------------------------------------------
+model <- glm(
+  Churn ~ MonthlyCharges + gender + SeniorCitizen + Partner +
+    Dependents + tenure + PhoneService + StreamingMovies +
+    Contract + PaperlessBilling + PaymentMethod,
+  data = Telco_Data, family = "binomial"
+)
+
+Telco_Data$Pred_Prob <- predict(model, type = "response")
+
+# Select relevant columns
+Results <- Telco_Data[, c("customerID", "Pred_Prob", "Churn")]
+Results
+
+# -----------------------------------------------
+# Top 10 Highest & Lowest Probabilities
+# -----------------------------------------------
+top10_high <- Results %>%
+  arrange(desc(Pred_Prob)) %>%
+  head(10)
+
+top10_low <- Results %>%
+  arrange(Pred_Prob) %>%
+  head(10)
+
+# -----------------------------------------------
+# Round and Display Results
+# -----------------------------------------------
+top10_high_round <- top10_high %>%
+  mutate(across(where(is.numeric), ~ round(.x, 5)))
+
+kable(top10_high_round, caption = "Top 10 Customers with Highest Predicted Churn Probabilities") %>%
+  kable_styling(
+    latex_options = c("hold_position", "scale_down"),
+    font_size = 9
+  )
+
+top10_low_round <- top10_low %>%
+  mutate(across(where(is.numeric), ~ round(.x, 5)))
+
+kable(top10_low_round, caption = "Top 10 Customers with Lowest Predicted Churn Probabilities") %>%
+  kable_styling(
+    latex_options = c("hold_position", "scale_down"),
+    font_size = 9
+  )
+```
