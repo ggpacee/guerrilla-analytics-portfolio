@@ -22,3 +22,5 @@ This repository contains selected university projects from my Master’s in Data
   - A `README.md` describing the goal, data, methods and key insights.  
   - The main analysis file (`.Rmd` or notebook) with the full code.
   - The report file (`.pdf`) knitted from the markdown file.
+
+## Thank you for taking your time to evaluate this. Hope everything is clear! :)
